@@ -1,2 +1,1 @@
-# rshell
-CS 100 Assignment 2
+# cs100-rshell
