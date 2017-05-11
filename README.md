@@ -10,7 +10,7 @@ not include all the features of bash, only the ones specified in the assignment 
 ### Install Instructions
 
 ```
-$ git clone https://github.com/georgeuy2/rshell.git
+$ git clone https://github.com/apire001/rshell.git
 $ cd rshell
 $ git checkout hw2
 $ make
