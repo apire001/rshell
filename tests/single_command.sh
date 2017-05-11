@@ -1,7 +1,7 @@
 #!/bin/sh
 ls
 ls -a
-makdir event
+mkdir event
 echo dog
 echo cat
 exit
