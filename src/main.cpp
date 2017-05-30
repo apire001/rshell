@@ -95,19 +95,23 @@ class Command: public Terminal { //base class for single command
                     perror("Error: More than 1 flag");
                     return false;
                 }
-                if(!testflag && !leftflag && rightflag){
+                if (!flage && !flagf && !flagd) {
+                    flage = true;
+                }
+                
+                if(!testflag && !leftflag && rightflag) {
                     perror("Missing left bracket for test");
                 }
-                if(!testflag && leftflag && !rightflag){
+                if(!testflag && leftflag && !rightflag) {
                     perror("Missing right bracket for test");
                 }
-                if(testflag && !leftflag && rightflag){
+                if(testflag && !leftflag && rightflag) {
                     perror("Test and right bracket detected");
                 }
-                if(testflag && leftflag && !rightflag){
+                if(testflag && leftflag && !rightflag) {
                     perror("Test and left bracket detected");
                 }
-                if(testflag && leftflag && rightflag){
+                if(testflag && leftflag && rightflag) {
                     perror("Test and brackets detected");
                 }
                 char* testLine = new char[cmd.size()];
@@ -280,8 +284,7 @@ class Command_Line: public Terminal { //The class containing the full structure 
                             }
                         }
                     }
-                    if(j < in1.size()){
-                        if ((in1.at(i) == '&') && (in1.at(j) == '&')) { //Case 1
+                        if ((in1.at(i) == '&') && j < in1.size() && (in1.at(j) == '&')) { //Case 1
                             if (!curr) { //base case (first command in command line will not be a composition)
                                 if(pOccur == 1){
                                     curr = new Command_Line(cmd);
@@ -318,7 +321,7 @@ class Command_Line: public Terminal { //The class containing the full structure 
                             i = i + 2;
                             j = j + 2;
                         }
-                        else if ((in1.at(i) == '|') && (in1.at(j) == '|')) { //Case 2
+                        else if ((in1.at(i) == '|') && j < in1.size() && (in1.at(j) == '|')) { //Case 2
                             if (!curr) { //base case (first command will not be a composition)
                                 if(pOccur == 1){
                                     curr = new Command_Line(cmd);
@@ -435,7 +438,6 @@ class Command_Line: public Terminal { //The class containing the full structure 
                         }
                         ++i;
                         ++j;
-                    }
                     }
                 }
                 if (prevCmd == 0) { //Case 0, command line only contatins a single command
