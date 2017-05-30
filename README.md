@@ -19,6 +19,6 @@ $ bin/rshell
 
 ### Known Bugs
 
-* If the command ends with a single | or & character it will result in a string out of bounds error. rather than the intended error
+* If the command ends with a single | or & character it will result in a string out of bounds error, rather than the intended error
 
 * If a single command has more than 2048 words, it will result in a segmentation fault
