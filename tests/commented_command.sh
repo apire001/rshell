@@ -1,12 +1,22 @@
 #!/bin/sh
+echo A #echo B
+echo A #&& echo B
+echo A && echo B #&& echo C
+echo A #; echo B
+echo A #|| echo B
+#echo A
+echo A #ehiaohehihfih
+echo #Ahoefhiehf
+echo B && echo B #ahfoiheihih
+echo Hello World #
 ls #test
 ls -a #test
-echo mice #testing
-cd .. #mice
+echo moose #testing
+cd .. #moose
 ls #checking directory
-mkdir temp #create folder
-ls #show dir
-date #print date
-rm temp #deleting temp
-time #print time
-exit #exiting 
+mkdir temp #delete this later
+ls #show new dir
+test -f /test/file/path #comments
+[ -f /test/file/path ] #comment
+ls -a || (echo moose && echo dov #echoing stuff)
+exit #exiting  
