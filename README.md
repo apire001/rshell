@@ -21,4 +21,4 @@ $ bin/rshell
 
 * If a single command has more than 2048 words, it will result in a segmentation fault
 * The "$ " string for the terminal command lines may be output in the wrong place if you use the | operator. This is due to the parent process not waiting for the child processes to finish, we have tried many different execution and waiting  methods but are unsure how to fix it. Regardless of this bug, the program will continue to run and work properly aside from this. Only happens once per pipe command.
-* 
+* Parentheses should work with <, >, >> and |. NOTE: Our parentheses error checking is horrible, so it will only work with proper syntax.
