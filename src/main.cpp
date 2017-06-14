@@ -1,8 +1,5 @@
 //Andrew Pirelli
 //Atreyu Wittman
-// Bugs:
-// Each command must have no more than 2048 words
-// Commands must have the format specified in the assignment specs, otherwise it will not execute properly
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -11,8 +8,9 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <iostream>
+#include <fstream>
 #include <string.h>
-
+#include <fcntl.h>
 #include <vector>
 #include <boost/tokenizer.hpp>
 
@@ -22,6 +20,42 @@ class Terminal{
     public:
         virtual bool execute() = 0;
         //adding the bool component became neccesary for executing the connector logic
+};
+
+class Command_Pipe: public Terminal{
+    private:
+        Terminal* Phrase1; //pointer to left command/composition
+        Terminal* Phrase2; //pointer to right command
+    public:
+        Command_Pipe(Terminal* in1, Terminal* in2) {
+            Phrase1 = in1;
+            Phrase2 = in2;
+        }
+        virtual bool execute() { //Piping execution |
+            int fd[2];
+            pipe(fd);
+            if(fork() == 0) {
+                close(STDOUT_FILENO);  //closing stdout
+                dup(fd[1]);         //replacing stdout with pipe write 
+                close(fd[0]);       //closing pipe read
+                close(fd[1]);
+                Phrase1->execute();
+                exit(0);
+            }
+            if(fork() == 0) {
+                close(STDIN_FILENO);   //closing stdin
+                dup(fd[0]);         //replacing stdin with pipe read
+                close(fd[1]);       //closing pipe write
+                close(fd[0]);
+                Phrase2->execute();
+                exit(0);
+            }
+            close(fd[0]);
+            close(fd[1]);
+            wait(0);
+            wait(0);
+            return true;
+        }
 };
 
 class Command: public Terminal { //base class for single command
@@ -34,6 +68,9 @@ class Command: public Terminal { //base class for single command
         bool flage;
         bool flagf;
         bool flagd;
+        bool pipea; // < operator
+        bool pipeb; // > operator
+        bool pipec; // >> operator
     public:
         Command(string in1) { //turns string into components for fork, execvp, waitid and test
             cmd = in1;
@@ -44,53 +81,162 @@ class Command: public Terminal { //base class for single command
             flage = false;
             flagf = false;
             flagd = false;
-            if(cmd.find("-e") != string::npos) {
-                flage = true;
+            pipea = false;
+            pipeb = false;
+            pipec = false;
+            if(cmd.find(" < ") != string::npos){
+                pipea = true;
             }
-            else if(cmd.find("-f") != string::npos) {
-                flagf = true;
+            if(cmd.find(" > ") != string::npos){
+                pipeb = true;
             }
-            else if(cmd.find("-d") != string::npos) {
-                flagd = true;
+            if(cmd.find(" >> ") != string::npos){
+                pipec = true;
             }
-            size_t testpos = cmd.find("test");
-            if(testpos != string::npos && (testpos == 1 || testpos == 0)) {
-                cmd.erase(testpos, 4);
-                test = 1;
-                testflag = true;
+            if(pipea || pipeb || pipec){
+                
             }
-            size_t leftbpos = cmd.find("[");
-            if(leftbpos != string::npos && (leftbpos == 1 || leftbpos == 0)) {
-                cmd.erase(leftbpos, 1);
-                test = 1;
-                leftflag == true;
-            }
-            size_t rightbpos = cmd.find("]");
-            if(rightbpos != string::npos && (rightbpos == cmd.size() - 1 || rightbpos == cmd.size() - 2)) {
-                rightflag == true;
-                cmd.erase(rightbpos, 1);
-                test = 1;
-            }
-            if(test == 1){
-                size_t flagloc;
-                if(flage) {
-                    flagloc = cmd.find("-e");
-                    if(!(flagloc == string::npos)){
+            else{
+                if(cmd.find("-e") != string::npos) {
+                    flage = true;
+                }
+                else if(cmd.find("-f") != string::npos) {
+                    flagf = true;
+                }
+                else if(cmd.find("-d") != string::npos) {
+                    flagd = true;
+                }
+                size_t testpos = cmd.find("test");
+                if(testpos != string::npos && (testpos == 1 || testpos == 0)) {
+                    cmd.erase(testpos, 4);
+                    test = 1;
+                    testflag = true;
+                }
+                size_t leftbpos = cmd.find("[");
+                if(leftbpos != string::npos && (leftbpos == 1 || leftbpos == 0)) {
+                    cmd.erase(leftbpos, 1);
+                    test = 1;
+                    leftflag == true;
+                }
+                size_t rightbpos = cmd.find("]");
+                if(rightbpos != string::npos && (rightbpos == cmd.size() - 1 || rightbpos == cmd.size() - 2)) {
+                    rightflag == true;
+                    cmd.erase(rightbpos, 1);
+                    test = 1;
+                }
+                if(test == 1){
+                    size_t flagloc;
+                    if(flage) {
+                        flagloc = cmd.find("-e");
+                        if(!(flagloc == string::npos)){
+                            cmd.erase(flagloc, 2);
+                        }
+                    }
+                    else if(flagd) {
+                        flagloc = cmd.find("-f");
                         cmd.erase(flagloc, 2);
                     }
-                }
-                else if(flagd) {
-                    flagloc = cmd.find("-f");
-                    cmd.erase(flagloc, 2);
-                }
-                else if(flagf) {
-                    flagloc = cmd.find("-d");
-                    cmd.erase(flagloc, 2);
+                    else if(flagf) {
+                        flagloc = cmd.find("-d");
+                        cmd.erase(flagloc, 2);
+                    }
                 }
             }
         }
         virtual bool execute() {
-            if(test) { //run as test command
+            if(pipea || pipeb || pipec){ //input output error checking and execution
+                if(pipea && pipeb && pipec){
+                   perror("Error: Too many operators for one command(< > >>)");
+                }
+                if(!pipea && pipeb && pipec){
+                   perror("Error: Too many operators for one command(> >>)");
+                }
+                if(pipea && !pipeb && pipec){
+                   perror("Error: Too many operators for one command(< >>)");
+                }
+                if(pipea && pipeb && !pipec){
+                   perror("Error: Too many operators for one command(< >)");
+                }
+                if(pipea){ // if < operator
+                    char* cmdLine[2048];
+                    cmd_to_arr(cmdLine, cmd);
+                    int i = 0;
+                    int j = 0;
+                    int k = 0;
+                    string filename;
+                    while(cmdLine[i] != '\0' && k == 0){
+                        if(j == 1){
+                            filename = cmdLine[i];
+                            cmdLine[i - 1] = '\0';
+                            k = 1;
+                        }
+                        if(cmdLine[i][0] == '<'){
+                            j = 1;
+                        }
+                        ++i;
+                    }
+                    if(cmdLine[i] != '\0'){
+                        perror("More words than just filename");
+                        return false;
+                    }
+                    int fd[2];
+                    pipe(fd);
+                    return runpipea(fd, filename, cmdLine);
+                }
+                if(pipeb){ // if > operator
+                    char* cmdLine[2048];
+                    cmd_to_arr(cmdLine, cmd);
+                    int i = 0;
+                    int j = 0;
+                    int k = 0;
+                    string filename;
+                    while(cmdLine[i] != '\0' && k == 0){
+                        if(j == 1){
+                            filename = cmdLine[i];
+                            cmdLine[i - 1] = '\0';
+                            k = 1;
+                        }
+                        if(cmdLine[i][0] == '>'){
+                           j = 1; 
+                        }
+                        i++;
+                    }
+                    if(cmdLine[i] != '\0'){
+                        perror("More words than just filename");
+                        return false;
+                    }
+                    int fd[2];
+                    pipe(fd);
+                    return runpipeb(fd, filename, cmdLine);
+                }
+                if(pipec){ // if >> operator
+                    char* cmdLine[2048];
+                    cmd_to_arr(cmdLine, cmd);
+                    int i = 0;
+                    int j = 0;
+                    int k = 0;
+                    string filename;
+                    while(cmdLine[i] != '\0' && k == 0){
+                        if(j == 1){
+                            filename = cmdLine[i];
+                            cmdLine[i - 1] = '\0';
+                            k = 1;
+                        }
+                        if(cmdLine[i][0] == '>' && cmdLine[i][1] == '>'){
+                           j = 1; 
+                        }
+                        i++;
+                    }
+                    if(cmdLine[i] != '\0'){
+                        perror("More words than just filename");
+                        return false;
+                    }
+                    int fd[2];
+                    pipe(fd);
+                    return runpipec(fd, filename, cmdLine);
+                }
+            }
+            else if(test) { //run as test command
                 if ((flage && flagf) || (flage && flagd) || (flagf && flagd)){
                     perror("Error: More than 1 flag");
                     return false;
@@ -178,7 +324,7 @@ class Command: public Terminal { //base class for single command
             		}
             	}
             	else { //parent process
-            		int childWait = waitpid(child_pid, &childWait, 0);
+            		int childWait = waitpid(child_pid, &childWait, WNOHANG);
             		if (childWait <= -1) {
             			perror("Failed to wait for child");
             		}
@@ -190,6 +336,76 @@ class Command: public Terminal { //base class for single command
             	return false;
             }
         }
+        
+        bool runpipea(int pfd[], string filename, char* cmdLine[]){ // < operator
+            int fd[2];
+            pipe(fd);
+            int pid, status;
+            FILE* fp;
+            char c;
+            pid = fork();
+            if (pid == 0) {
+                dup2(fd[0], STDIN_FILENO);
+                close(fd[1]);
+                execvp(cmdLine[0], cmdLine);
+                //exit(0);
+            }
+            else {
+                close(fd[0]);
+                fp = fopen(filename.c_str(), "r");
+                if(fp){
+                    while((c = getc(fp)) != EOF){
+                        if((write(fd[1], &c, 1)) < 1){
+                            fprintf(stderr, "Write to pipe failed.\n");
+                            perror("write");
+                            exit(1);
+                        }
+                    }
+                }
+                fclose(fp);
+                close(fd[1]);   
+                waitpid(pid, &status, 0);
+            }
+        }
+        
+        bool runpipeb(int pfd[], string filename, char* cmdLine[]){ // > operator
+            if (fork() == 0) {
+                int fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+                dup2(fd, 1);
+                close(fd);
+                execvp(cmdLine[0], cmdLine);
+                exit(0);
+            }
+            wait(0);
+            return true;
+        }
+        
+        bool runpipec(int pfd[], string filename, char* cmdLine[]){ // >> operator
+            if (fork() == 0) {
+                int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+                dup2(fd, 1);
+                close(fd);
+                execvp(cmdLine[0], cmdLine);
+                exit(0);
+            }
+            wait(0);
+            return true;
+        }
+        
+        void cmd_to_arr(char* cmdLine[], string input){
+            char* whitespace = strtok(&input[0], " \t"); //removes whitespace
+                vector<string> temps;
+                while (whitespace) {
+                    temps.push_back(whitespace); //pushing back without whitespace
+                    whitespace = strtok(0, " \t");
+                }
+                for (unsigned i = 0; i < temps.size(); ++i) {
+                    string& swap = temps.at(i);
+                    cmdLine[i] = &swap[0];
+                }
+                cmdLine[temps.size()] = '\0';
+        }
+    
 };
 
 class Command_And: public Terminal { // for && connector
@@ -314,6 +530,9 @@ class Command_Line: public Terminal { //The class containing the full structure 
                                 if (prevCmd == 3) {
                                     Top = new Command_List(curr, temp);
                                 }
+                                if (prevCmd == 5) {
+                                    Top = new Command_Pipe(curr, temp);
+                                }
                                 curr = Top;
                                 prevCmd = 1;
                                 cmd.clear();
@@ -351,6 +570,9 @@ class Command_Line: public Terminal { //The class containing the full structure 
                                 if (prevCmd == 3) {
                                     Top = new Command_List(curr, temp);
                                 }
+                                if (prevCmd == 5) {
+                                    Top = new Command_Pipe(curr, temp);
+                                }
                                 curr = Top;
                                 prevCmd = 2;
                                 cmd.clear();
@@ -387,6 +609,9 @@ class Command_Line: public Terminal { //The class containing the full structure 
                                 }
                                 if (prevCmd == 3) {
                                     Top = new Command_List(curr, temp);
+                                }
+                                if (prevCmd == 5) {
+                                    Top = new Command_Pipe(curr, temp);
                                 }
                                 curr = Top;
                                 prevCmd = 3;
@@ -426,11 +651,54 @@ class Command_Line: public Terminal { //The class containing the full structure 
                                 if (prevCmd == 3) {
                                     Top = new Command_List(curr, temp);
                                 }
+                                if (prevCmd == 5) {
+                                    Top = new Command_Pipe(curr, temp);
+                                }
                                 curr = Top;
                                 i = in1.size();
                                 cmd.clear();
                                 prevCmd = 4;
                             }
+                        }
+                        else if ((in1.at(i) == '|') && j < in1.size() && (in1.at(j) == ' ') && (i-1 >= 0) && (in1.at(i-1) == ' ')) { //Case 5
+                            if (!curr) { //base case (first command will not be a composition)
+                                if(pOccur == 1){
+                                    curr = new Command_Line(cmd);
+                                    --pOccur;
+                                }
+                                else{
+                                    curr = new Command(cmd);
+                                }
+                                Top = curr;
+                                cmd.clear();
+                                prevCmd = 5;
+                            }
+                            else { //past base case
+                                if(pOccur == 1){
+                                    temp = new Command_Line(cmd);
+                                    --pOccur;
+                                }
+                                else{
+                                    temp = new Command(cmd);
+                                }
+                                if (prevCmd == 1) {
+                                    Top = new Command_And(curr, temp);
+                                }
+                                if (prevCmd == 2) {
+                                    Top = new Command_Xor(curr, temp);
+                                }
+                                if (prevCmd == 3) {
+                                    Top = new Command_List(curr, temp);
+                                }
+                                if (prevCmd == 5) {
+                                    Top = new Command_Pipe(curr, temp);
+                                }
+                                curr = Top;
+                                prevCmd = 5;
+                                cmd.clear();
+                            }
+                            i = i + 2;
+                            j = j + 2;
                         }
                     else {
                         if(pOccur == 0 && i < in1.size()){
@@ -479,6 +747,16 @@ class Command_Line: public Terminal { //The class containing the full structure 
                         temp = new Command(cmd);
                     }
                     Top = new Command_List(curr, temp);
+                }
+                if (prevCmd == 5) { //Case 5, last connector was |
+                    if(pOccur == 1){
+                        temp = new Command_Line(cmd);
+                        --pOccur;
+                    }
+                    else{
+                        temp = new Command(cmd);
+                    }
+                    Top = new Command_Pipe(curr, temp);
                 }
                 //if it was case 4 in the above loop, this part is skipped as everything after # is ignored
             }
