@@ -312,28 +312,28 @@ class Command: public Terminal { //base class for single command
                     exit(0);
                 }
             	int child_pid = fork(); //fork test fatal for fatal errors
-            	if (child_pid <= -1) {	//-1 is error
-            		perror("Fork creation error");
-            		return false;
-            	}
-            	else if (child_pid == 0) { //child process
-            		int result = execvp(*cmdLine, cmdLine);
-            		if (result <= -1) {
-            			perror("Command line execution error");
-            			return false;
-            		}
-            	}
-            	else { //parent process
-            		int childWait = waitpid(child_pid, &childWait, WNOHANG);
-            		if (childWait <= -1) {
-            			perror("Failed to wait for child");
-            		}
-            		if (childWait == 0) {
-            			return true;
-            		}
-            		return true;
-            	}
-            	return false;
+             	if (child_pid <= -1) {	//-1 is error
+             		perror("Fork creation error");
+             		return false;
+             	}
+             	else if (child_pid == 0) { //child process
+             		int result = execvp(*cmdLine, cmdLine);
+             		if (result <= -1) {
+             			perror("Command line execution error");
+             			return false;
+             		}
+             	}
+             	else { //parent process
+             		int childWait = waitpid(child_pid, &childWait, 0);
+             		if (childWait <= -1) {
+             			perror("Failed to wait for child");
+             		}
+             		if (childWait == 0) {
+             			return true;
+             		}
+              		return true;
+              	}
+              	return false;
             }
         }
         
