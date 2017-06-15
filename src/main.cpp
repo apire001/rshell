@@ -660,7 +660,7 @@ class Command_Line: public Terminal { //The class containing the full structure 
                                 prevCmd = 4;
                             }
                         }
-                        else if ((in1.at(i) == '|') && j < in1.size() && (in1.at(j) == ' ') && (i-1 >= 0) && (in1.at(i-1) == ' ')) { //Case 5
+                        else if ((in1.at(i) == '|') && j < in1.size() && (in1.at(j) == ' ') && (i != 0) && (in1.at(i-1) == ' ')) { //Case 5
                             if (!curr) { //base case (first command will not be a composition)
                                 if(pOccur == 1){
                                     curr = new Command_Line(cmd);
